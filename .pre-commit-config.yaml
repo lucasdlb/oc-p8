@@ -1,0 +1,63 @@
+repos:
+
+  # ------------------------------------------------
+  # General repository hygiene
+  # ------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  # ------------------------------------------------
+  # Ruff: linter + formatter
+  # ------------------------------------------------
+  - repo: local
+    hooks:
+
+      # 1. Auto-fix first
+      - id: ruff-fix
+        name: ruff auto-fix
+        entry: uv run ruff check . --fix
+        language: system
+        pass_filenames: false
+
+      # 2. Then fail if issues remain
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check .
+        language: system
+        pass_filenames: false
+
+      # 3. Format code
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format .
+        language: system
+        pass_filenames: false
+
+  # ------------------------------------------------
+  # Local hooks
+  # ------------------------------------------------
+  - repo: local
+    hooks:
+
+      # Type checking
+      - id: ty
+        name: ty type check
+        entry: uv run ty check
+        language: system
+        pass_filenames: false
+
+      # Tests before push
+      # Keep commits fast, test on push
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

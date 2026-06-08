@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "skills": {
+    "python-configuration": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/python-development/skills/python-configuration/SKILL.md",
+      "computedHash": "4c5a9bb3ba5100379c57e773372eeafb45601a159c8a2f523bc30a4f3686ce30"
+    },
+    "rich-terminal-ux": {
+      "source": "/home/lucas/oc/oc-p8/rich-terminal-ux",
+      "sourceType": "local",
+      "computedHash": "75f32b1c1525474ea4069b66abfc07f005619957c9852f2dcfff987a392e7c8c"
+    }
+  }
+}
