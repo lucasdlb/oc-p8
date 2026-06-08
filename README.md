@@ -18,7 +18,7 @@ API FastAPI, logging Fluentd → Elasticsearch, métriques Prometheus, dashboard
 
 ```bash
 # API en local
-uv run uvicorn src.oc_p8.api.main:app --reload
+ uv run uvicorn src.credit_risk_server.api.main:app --reload
 
 # Stack complète
 docker compose up
