@@ -81,3 +81,15 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Choix** : joblib en MVP, migration ONNX en étape 9
 - **Justif** : joblib = débogage facile en dev. ONNX = standard déploiement,
   gain latence et image Docker allégée. Benchmark avant/après dans étape 9.
+
+## D-12 — Config pattern : Settings par service
+
+- **Options** : Settings plat unique / Settings par service avec préfixes / Settings par service avec `.env.<service>` séparés
+- **Choix** : Settings par service avec `.env.<service>` séparés
+- **Justif** : Chaque service Docker a ses propres variables. `AppSettings` fournit les
+  champs communs (`log_level`, `env`). `ApiSettings(AppSettings)` lit `.env.api`,
+  `DashboardSettings(AppSettings)` lira `.env.dashboard`, etc. Pas de dépendance croisée :
+  `loader.py` prend un `str`, `settings` incontré que dans `main.py` lifespan.
+- **Conséquences** : `.env.api.example`, `.env.dashboard.example` commités.
+  `.gitignore` : `.env.*` ignorés, `!.env.*.example` autorisés.
+- **Révision si** : Si les services partagent trop de vars → fusionner en Settings plat.
