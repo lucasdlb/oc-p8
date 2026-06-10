@@ -348,8 +348,8 @@ wheels = [
 
 [[package]]
 name = "credit-risk-data"
-version = "0.1.0"
-source = { git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-data&tag=credit-risk-data%2Fv0.1.0#ae81decfaebd68507729af057fc4ab4c4476aa87" }
+version = "0.1.1"
+source = { git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-data&tag=credit-risk-data%2Fv0.1.1#ed6501f48a562f39de2a031c8674bea867500626" }
 dependencies = [
     { name = "polars" },
     { name = "pyarrow" },
@@ -357,8 +357,8 @@ dependencies = [
 
 [[package]]
 name = "credit-risk-models"
-version = "0.1.0"
-source = { git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-models&tag=credit-risk-models%2Fv0.1.0#ae81decfaebd68507729af057fc4ab4c4476aa87" }
+version = "0.1.1"
+source = { git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-models&tag=credit-risk-models%2Fv0.1.1#ed6501f48a562f39de2a031c8674bea867500626" }
 dependencies = [
     { name = "credit-risk-processing" },
     { name = "polars" },
@@ -368,8 +368,8 @@ dependencies = [
 
 [[package]]
 name = "credit-risk-processing"
-version = "0.1.0"
-source = { git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-processing&tag=credit-risk-models%2Fv0.1.0#ae81decfaebd68507729af057fc4ab4c4476aa87" }
+version = "0.1.1"
+source = { git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-processing&tag=credit-risk-models%2Fv0.1.1#ed6501f48a562f39de2a031c8674bea867500626" }
 dependencies = [
     { name = "lightgbm" },
     { name = "polars" },
@@ -1204,9 +1204,9 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 api = [
-    { name = "credit-risk-data", git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-data&tag=credit-risk-data%2Fv0.1.0" },
-    { name = "credit-risk-models", git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-models&tag=credit-risk-models%2Fv0.1.0" },
-    { name = "credit-risk-processing", git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-processing&tag=credit-risk-processing%2Fv0.1.0" },
+    { name = "credit-risk-data", git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-data&tag=credit-risk-data%2Fv0.1.1" },
+    { name = "credit-risk-models", git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-models&tag=credit-risk-models%2Fv0.1.1" },
+    { name = "credit-risk-processing", git = "https://github.com/lucasdlb/oc-p6.git?subdirectory=packages%2Fcredit-risk-processing&tag=credit-risk-processing%2Fv0.1.1" },
     { name = "elasticsearch", specifier = ">=9.4.1" },
     { name = "fastapi", specifier = ">=0.136.3" },
     { name = "prometheus-client", specifier = ">=0.25.0" },

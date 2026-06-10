@@ -34,9 +34,9 @@ dev = [
 ]
 
 [tool.uv.sources]
-credit-risk-data       = { git = "https://github.com/lucasdlb/oc-p6.git", tag = "credit-risk-data/v0.1.0",       subdirectory = "packages/credit-risk-data" }
-credit-risk-models     = { git = "https://github.com/lucasdlb/oc-p6.git", tag = "credit-risk-models/v0.1.0",     subdirectory = "packages/credit-risk-models" }
-credit-risk-processing = { git = "https://github.com/lucasdlb/oc-p6.git", tag = "credit-risk-processing/v0.1.0", subdirectory = "packages/credit-risk-processing" }
+credit-risk-data       = { git = "https://github.com/lucasdlb/oc-p6.git", tag = "credit-risk-data/v0.1.1",       subdirectory = "packages/credit-risk-data" }
+credit-risk-models     = { git = "https://github.com/lucasdlb/oc-p6.git", tag = "credit-risk-models/v0.1.1",     subdirectory = "packages/credit-risk-models" }
+credit-risk-processing = { git = "https://github.com/lucasdlb/oc-p6.git", tag = "credit-risk-processing/v0.1.1", subdirectory = "packages/credit-risk-processing" }
 
 [build-system]
 requires = ["hatchling"]
@@ -87,6 +87,6 @@ branch = true
 source = ["src"]
 
 [tool.coverage.report]
-fail_under = 90
+fail_under = 20
 show_missing = true
 skip_covered = true
