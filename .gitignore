@@ -33,10 +33,12 @@ coverage.xml
 
 # Data & models (loaded at runtime)
 data/
+!src/credit_risk_server/data/
 *.pkl
 *.joblib
 *.h5
 *.onnx
+*.csv
 
 # Logs
 *.log
@@ -59,3 +61,6 @@ tmp.txt
 
 # Object
 artifacts/
+
+# Logs
+logs/

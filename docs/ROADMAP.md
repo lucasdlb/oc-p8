@@ -9,22 +9,22 @@
 - [x] Compléter le `.gitignore` (.env, htmlcov/, .ruff_cache, data/, etc.)
 - [x] Ajouter un `.env.example` documentant les variables
 - [x] Ajouter une LICENSE (MIT)
-- [ ] Ajouter des commits explicites
-- [ ] Pousser sur GitHub (repo public)
+- [x] Ajouter des commits explicites
+- [x] Pousser sur GitHub (repo public)
 
 ## 2. API de scoring
 
-- [ ] Développer l'app FastAPI (`src/oc_p8/api/main.py`)
-- [ ] Charger le modèle InferencePipeline UNE seule fois au démarrage (`dependencies.py`)
-- [ ] Endpoint `/predict` — 7 tables brutes en entrée, pipeline complet P6
-- [ ] Endpoint `/health`
+- [x] Développer l'app FastAPI (`src/credit_risk_server/api/main.py`)
+- [x] Charger le modèle InferencePipeline UNE seule fois au démarrage (`dependencies.py`)
+- [x] Endpoint `/predict` — 7 tables brutes en entrée, pipeline complet P6
+- [x] Endpoint `/health`
 - [ ] Endpoint `/metrics` (Prometheus format)
-- [ ] Schémas Pydantic pour les 7 tables (`api/schemas/`)
+- [x] Schémas Pydantic pour les 7 tables (`api/schemas/`)
 - [ ] Exceptions custom découplées de FastAPI (`core/exceptions.py`)
 - [ ] Handlers globaux d'exceptions dans l'app
-- [ ] Documentation Swagger automatique
-- [ ] Config pydantic-settings (`core/config.py`)
-- [ ] Logging structuré JSON (`core/logging.py`)
+- [x] Documentation Swagger automatique
+- [x] Config pydantic-settings (`core/config.py`)
+- [x] Logging structuré JSON (`core/logging.py`)
 
 ## 3. Tests automatisés
 
@@ -41,8 +41,8 @@
 
 ## 4. Logging structuré
 
-- [ ] Middleware FastAPI : logger chaque requête (timestamp, input hash, score, latence, erreurs)
-- [ ] Format JSON structuré
+- [x] Middleware FastAPI : logger chaque requête (timestamp, input hash, score, latence, erreurs)
+- [x] Format JSON structuré
 - [ ] Sortie stdout (capté par Fluentd via Docker logging driver)
 - [ ] Données de démo pour tester le pipeline de logs
 
