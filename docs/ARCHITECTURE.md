@@ -65,16 +65,16 @@
 │   ├── DECISIONS.md            # Registre des choix délibérés
 │   ├── ROADMAP.md              # Phases d'implémentation
 │   └── STACK.md                # Stack technique validée
-├── src/oc_p8/
+├── src/credit_risk_server/
 │   ├── __init__.py
 │   ├── api/
 │   │   ├── __init__.py
 │   │   ├── main.py             # FastAPI app factory + exception handlers
+│   │   ├── dependencies.py     # model + data_source injection via Depends
 │   │   ├── routes/
 │   │   │   ├── __init__.py
-│   │   │   ├── predict.py      # /predict (7 tables → InferencePipeline)
+│   │   │   ├── predict.py      # /predict (sk_ids), /predict/rows (JSON)
 │   │   │   └── health.py       # /health
-│   │   ├── dependencies.py     # # model injection via Depends
 │   │   └── schemas/
 │   │       ├── __init__.py
 │   │       ├── application.py   # Pydantic model table application
@@ -84,16 +84,25 @@
 │   │       ├── pos_cash_balance.py
 │   │       ├── installments.py
 │   │       ├── credit_card_balance.py
-│   │       └── prediction.py    # Response schema
+│   │       └── prediction.py    # Request/response schemas
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── config.py            # pydantic-settings
-│   │   ├── logging.py           # structured JSON logging
-│   │   └── exceptions.py       # custom exceptions (PredictionError, InvalidInputError, ModelLoadError)
+│   │   ├── config.py            # pydantic-settings (AppSettings → ApiSettings)
+│   │   ├── logging.py           # DevFormatter + JSONFormatter, correlation, Timer
+│   │   └── exceptions.py       # PredictionError, InvalidInputError, ModelLoadError
+│   ├── data/
+│   │   ├── __init__.py          # public API: assemble, DataSource, make_source
+│   │   ├── assembler.py         # assemble(source, sk_ids) → dict[str, DataFrame]
+│   │   ├── factory.py           # make_source(settings) → DataSource | None
+│   │   ├── source.py            # DataSource protocol + TABLE_NAMES + CSV_NAME_MAP
+│   │   └── sources/
+│   │       ├── __init__.py
+│   │       ├── polars.py        # PolarsDataSource (PLLazyDataLoader adapter)
+│   │       └── sql.py           # SqlDataSource (placeholder)
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── loader.py            # load InferencePipeline pickle
-│   │   └── predictor.py         # prediction logic (no FastAPI dependency)
+│   │   └── predictor.py         # predict() + predict_from_tables() (no FastAPI dep)
 │   ├── monitoring/
 │   │   ├── __init__.py
 │   │   ├── drift.py             # Evidently drift detection
@@ -104,6 +113,8 @@
 ├── tests/
 │   ├── conftest.py
 │   ├── unit/
+│   │   └── data/
+│   │       └── test_data_pipeline.py
 │   └── integration/
 ├── docker/
 │   ├── api/Dockerfile
@@ -113,7 +124,8 @@
 │   └── grafana/
 │       ├── datasources/
 │       └── dashboards/
-├── .env.example
+├── .env.example                 # shared + API sections
+├── .env.api                     # API-specific vars (gitignored)
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── .python-version

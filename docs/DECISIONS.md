@@ -12,7 +12,7 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Justif** : Compatible Fluentd natif, datasource Grafana native, aligné objectif portfolio pro. Plus lourd que SQLite mais la stack Docker l'absorbe.
 - **Conséquences** : Requiert vm.max_map_count=262144, mapping explicite à l'init.
 - **Révision si** : Contrainte RAM en prod → migration vers PostgreSQL.
--
+
 ## D-02 — Dashboards monitoring
 
 - **Options** : Streamlit seul / Grafana seul / Streamlit + Grafana
@@ -22,8 +22,8 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 ## D-03 — Format entrée API /predict
 
 - **Options** : Features pré-processées (305) / 7 tables brutes (pipeline complet) / les deux endpoints
-- **Choix** : 7 tables brutes (pipeline complet)
-- **Justif** : Fidèle au P6, démontre le preprocessing end-to-end. Plus lourd en input mais réaliste pour un cas crédit avec données multi-sources.
+- **Choix** : 7 tables brutes via DataSource + endpoint row-oriented
+- **Justif** : Le endpoint `/predict` charge les données via DataSource (CSV, SQL…), le endpoint `/predict/rows` accepte du JSON inline. Les deux passent par l'InferencePipeline, fidèle au P6. L'approche DataSource permet un filtrage par `sk_ids` coté serveur.
 
 ## D-04 — Ingestion logs vers Elasticsearch
 
@@ -82,14 +82,59 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Justif** : joblib = débogage facile en dev. ONNX = standard déploiement,
   gain latence et image Docker allégée. Benchmark avant/après dans étape 9.
 
-## D-12 — Config pattern : Settings par service
+## D-12 — Config pattern : Settings par service, fichier .env unique
 
 - **Options** : Settings plat unique / Settings par service avec préfixes / Settings par service avec `.env.<service>` séparés
-- **Choix** : Settings par service avec `.env.<service>` séparés
+- **Choix** : Settings par service avec `.env.<service>` séparés + `.env` partagé
 - **Justif** : Chaque service Docker a ses propres variables. `AppSettings` fournit les
-  champs communs (`log_level`, `env`). `ApiSettings(AppSettings)` lit `.env.api`,
-  `DashboardSettings(AppSettings)` lira `.env.dashboard`, etc. Pas de dépendance croisée :
-  `loader.py` prend un `str`, `settings` incontré que dans `main.py` lifespan.
-- **Conséquences** : `.env.api.example`, `.env.dashboard.example` commités.
-  `.gitignore` : `.env.*` ignorés, `!.env.*.example` autorisés.
+  champs communs (`log_level`, `env`, `log_path`). `ApiSettings(AppSettings)` lit `.env.api`,
+  `DashboardSettings(AppSettings)` lira `.env.dashboard`, etc. Les variables partagées
+  (`LOG_LEVEL`, `ENV`, `LOG_PATH`) restent dans `.env`.
+- **Conséquences** : `.env.example` unique avec sections partagées + par service.
+  `.gitignore` : `.env` et `.env.*` ignorés, `!.env.example` autorisé.
 - **Révision si** : Si les services partagent trop de vars → fusionner en Settings plat.
+
+## D-13 — Data source optionnelle (DATA_SOURCE)
+
+- **Options** : Toujours créer le DataSource / rendre DATA_SOURCE optionnel
+- **Choix** : `DATA_SOURCE` optionnel via `Literal["csv", "sql"] | None`
+- **Justif** : L'endpoint `/predict/rows` n'a pas besoin de DataSource. Si `DATA_SOURCE`
+  est absent, l'API démarre quand même et `/predict` retourne 503. Permet de déployer
+  l'API sans fichiers CSV (utile en test, CI, ou pour ne servir que `/predict/rows`).
+- **Conséquences** : `make_source()` retourne `DataSource | None`. `get_data_source()`
+  retourne `DataSource | None`. Le route `/predict` lève HTTPException 503 si None.
+
+## D-14 — Assembler : un seul chemin (DataFrames)
+
+- **Options** : Garder `assemble()` (Pydantic) + `assemble_tables()` (DataFrames) / unifier
+- **Choix** : Unifier en un seul `assemble(source, sk_ids) -> dict[str, pl.DataFrame]`
+- **Justif** : Le chemin Pydantic (`assemble()`) convertissait Polars → list[dict] → validation
+  Pydantic → retour DataFrames, un round-trip inutile. Le chemin DataFrames est plus direct
+  et utilisé par le seul endpoint qui charge depuis la source. L'endpoint `/predict/rows`
+  construit déjà ses DataFrames depuis le JSON, sans passer par l'assembler.
+- **Conséquences** : `DictDataSource` supprimé (jamais appelé au runtime). Un seul point
+  d'entrée dans le module data.
+
+## D-15 — Endpoints synchrones
+
+- **Options** : `async def` partout / `def` sync pour les endpoints CPU-bound
+- **Choix** : `def` sync (endpoint handlers)
+- **Justif** : Toute la chaîne est CPU-bound (Polars, LightGBM, Pydantic). Un `async def`
+  sans `await` bloque l'event loop. FastAPI dispatche les endpoints sync dans un threadpool
+  via `run_in_threadpool`, évitant de starvationner l'event loop.
+
+## D-16 — Literal types pour la config
+
+- **Options** : Tous les champs en `str` / `Literal` pour les enums fermées
+- **Choix** : `Literal` pour `env` et `data_source`, `str` pour le reste
+- **Justif** : `env` a exactement 2 valeurs (`"dev"`, `"prod"`) qui déterminent le formatteur
+  de logs. `data_source` a 2 valeurs connues (`"csv"`, `"sql"`) pilotées par match/case.
+  Les autres champs (`log_level`, `api_host`, etc.) sont libres. Valider tôt > runtime error.
+
+## D-17 — DevFormatter : affichage des extras
+
+- **Options** : JSON compact / `key=value` space-separated / tabulaire aligné
+- **Choix** : `key=value` space-separated
+- **Justif** : Format lisible, grep-friendly, logfmt-compatible. En production, le
+  JSONFormatter sérialise déjà en JSON structuré. Le DevFormatter ne sert qu'en local.
+- **Conséquences** : Sortie type : `2024-01-15 10:30:00 | ... | data source created | source_type=csv data_path=data/`

@@ -16,19 +16,22 @@
 
 - [x] Développer l'app FastAPI (`src/credit_risk_server/api/main.py`)
 - [x] Charger le modèle InferencePipeline UNE seule fois au démarrage (`dependencies.py`)
-- [x] Endpoint `/predict` — 7 tables brutes en entrée, pipeline complet P6
+- [x] Endpoint `/predict` — sk_ids → DataSource → InferencePipeline — DATA_SOURCE configurable, 503 si absent
+- [x] Endpoint `/predict/rows` — JSON row-oriented, pas de DataSource requis
 - [x] Endpoint `/health`
 - [ ] Endpoint `/metrics` (Prometheus format)
 - [x] Schémas Pydantic pour les 7 tables (`api/schemas/`)
-- [ ] Exceptions custom découplées de FastAPI (`core/exceptions.py`)
-- [ ] Handlers globaux d'exceptions dans l'app
+- [x] Exceptions custom découplées de FastAPI (`core/exceptions.py`)
+- [x] Handlers globaux d'exceptions dans l'app
 - [x] Documentation Swagger automatique
-- [x] Config pydantic-settings (`core/config.py`)
-- [x] Logging structuré JSON (`core/logging.py`)
+- [x] Config pydantic-settings avec Literal types (`core/config.py`)
+- [x] Logging structuré JSON + DevFormatter avec extras (`core/logging.py`)
+- [x] Data layer : DataSource protocol, PolarsDataSource, assembler, factory
+- [x] Correlation middleware (X-Correlation-ID)
 
 ## 3. Tests automatisés
 
-- [ ] Tests unitaires preprocessing (par table)
+- [x] Tests unitaires data pipeline (assembler, PolarsDataSource, protocol)
 - [ ] Tests unitaires prédiction
 - [ ] Tests validation input (Pydantic schemas)
 - [ ] Cas critiques :
@@ -41,8 +44,9 @@
 
 ## 4. Logging structuré
 
-- [x] Middleware FastAPI : logger chaque requête (timestamp, input hash, score, latence, erreurs)
-- [x] Format JSON structuré
+- [x] Correlation middleware (X-Correlation-ID propagé dans chaque log)
+- [x] Format JSON structuré (production) + DevFormatter avec extras key=value (dev)
+- [x] Configurable via `ENV=dev|prod` dans `.env`
 - [ ] Sortie stdout (capté par Fluentd via Docker logging driver)
 - [ ] Données de démo pour tester le pipeline de logs
 
