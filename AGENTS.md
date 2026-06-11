@@ -41,6 +41,12 @@ uv run pytest tests/path/test_file.py::test_name
 
 
 
+## Git
+
+- **Never commit or push without explicit user request.**
+- After completing code changes, present a summary of what changed — but do NOT `git commit`, `git push`, or `gh pr create` unless explicitly asked.
+- When asked to commit, inspect `git status`, `git diff`, and recent commits first. Write concise commit messages matching the repo style.
+
 ## Config & secrets
 
 - Utiliser `pydantic-settings` + env vars — voir le skill `python-configuration`.

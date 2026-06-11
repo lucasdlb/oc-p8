@@ -9,6 +9,9 @@ Creates the FastAPI app, registers routers, and wires up:
 - **Correlation middleware**: propagates or generates an ``X-Correlation-ID``
   request header through the entire request/response cycle and stores it
   in a :class:`~contextvars.ContextVar` so every log record is correlated.
+- **Prometheus middleware**: increments request counters, observes latency,
+  and tracks in-flight requests via gauges. Metrics are collected on a
+  dedicated port (default 9100) managed by the lifespan.
 - **Exception handlers**: map domain exceptions to HTTP status codes —
 
   ======== ===================== ========
@@ -24,9 +27,9 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 
-import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from prometheus_client import start_http_server
 
 from credit_risk_server.api.routes.health import router as health_router
 from credit_risk_server.api.routes.predict import router as predict_router
@@ -35,6 +38,11 @@ from credit_risk_server.core.exceptions import InvalidInputError, ModelLoadError
 from credit_risk_server.core.logging import correlation_id, setup_logging
 from credit_risk_server.data.factory import make_source
 from credit_risk_server.models.loader import load_model
+from credit_risk_server.monitoring.metrics import (
+    ACTIVE_REQUESTS,
+    REQUEST_LATENCY,
+    REQUESTS_TOTAL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,13 +54,16 @@ async def lifespan(app: FastAPI):
     On startup:
 
     1. Configures structured JSON logging (idempotent).
-    2. Loads the :class:`~credit_risk_models.InferencePipeline` from disk
+    2. Starts the Prometheus metrics server on the configured port.
+    3. Loads the :class:`~credit_risk_models.InferencePipeline` from disk
        and stores it on ``app.state.model``.
-    3. Creates the :class:`~credit_risk_server.data.source.DataSource`
+    4. Creates the :class:`~credit_risk_server.data.source.DataSource`
        from settings and stores it on ``app.state.data_source``.
 
-    On shutdown both singletons are cleared to release resources.
+    On shutdown the metrics server is stopped and both singletons are
+    cleared to release resources.
     """
+    server, t = start_http_server(api_settings.metrics_port)
     setup_logging(
         log_level=api_settings.log_level,
         env=api_settings.env,
@@ -70,6 +81,9 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("data source not configured — /predict endpoint disabled")
     yield
+    server.shutdown()
+    server.server_close()
+    t.join()
     app.state.model = None
     app.state.data_source = None
     logger.info("api shut down")
@@ -78,6 +92,22 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(predict_router)
 app.include_router(health_router)
+
+
+@app.middleware("http")
+async def add_prometheus_metrics(request: Request, call_next):
+    """Collect HTTP-level Prometheus metrics for every request."""
+    method = request.method
+    endpoint = request.url.path
+
+    ACTIVE_REQUESTS.inc()
+    with REQUEST_LATENCY.labels(method=method, endpoint=endpoint).time():
+        response = await call_next(request)
+    ACTIVE_REQUESTS.dec()
+
+    REQUESTS_TOTAL.labels(method=method, endpoint=endpoint).inc()
+
+    return response
 
 
 @app.middleware("http")
@@ -115,12 +145,3 @@ async def prediction_error_handler(request, exc):
     """Return 500 Internal Server Error for :class:`PredictionError`."""
     logger.error("prediction error", extra={"detail": str(exc)})
     return JSONResponse(status_code=500, content={"detail": str(exc)})
-
-
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False,
-    )

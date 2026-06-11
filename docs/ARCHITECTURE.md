@@ -6,25 +6,25 @@
                           ┌─────────────┐
                      ┌──► │ Prometheus  │
                      │    └──────┬──────┘
-┌──────────────┐     │           │ scrape /metrics
+┌──────────────┐     │           │ scrape :9100
 │   FastAPI    │─────┤           ▼
 │  /predict    │     │    ┌─────────────┐
-│  /health     │     │    │   Grafana   │◄── datasource ES + Prometheus
-│  /metrics    │     │    └─────────────┘
+│  /health     │     │    │   Grafana   │◄── datasource Loki + Prometheus
+│ :8000/:9100 │     │    └─────────────┘
 └──────┬───────┘     │
        │             │    ┌─────────────┐
-       │ stdout JSON  └──►│  Fluentd    │
+       │ stdout JSON  └──►│  Promtail   │
        │                  └──────┬──────┘
        │                         │
        │                         ▼
        │                  ┌─────────────┐
-       │                  │Elasticsearch│
+       │                  │    Loki      │
        │                  └─────────────┘
        │                         ▲
        │                         │
 ┌──────┴───────┐                 │
-│  Streamlit   │─────────────────┘
-│  (Evidently) │   datasource ES pour drift
+│  Monitoring  │─────────────────┘
+│  (drift.py) │   LogQL queries pour drift
 └──────────────┘
 ```
 
@@ -34,26 +34,25 @@
 |---|---|---|
 | API | FastAPI + Pydantic | Scoring, endpoints |
 | Modèle | LightGBM (pickle P6) | InferencePipeline complet |
-| Logs structurés | JSON → Fluentd → Elasticsearch | Prédictions, latence, erreurs |
-| Métriques | prometheus_client → Prometheus | Latence, taux erreur, volume |
-| Dashboards | Grafana | Métriques temps réel + historique prédictions |
-| Drift ML | Evidently AI + Streamlit | Data drift, distribution scores |
+| Logs structurés | JSON stdout → Promtail → Loki | Prédictions, latence, erreurs |
+| Métriques | prometheus_client → Prometheus (port 9100) | Latence, taux erreur, volume, prédictions |
+| Dashboards | Grafana | Métriques temps réel + logs + drift |
+| Drift ML | Métriques Prometheus dans `monitoring/drift.py` | Data drift, distribution scores |
 | Tests | pytest + httpx | Unit + integration, 90% coverage |
-| Conteneurisation | Docker Compose | 6 services |
+| Conteneurisation | Docker Compose | 5 services |
 | CI/CD | GitHub Actions → HF Spaces | Lint, test, build, deploy |
 
 ## Docker Compose
 
-6 services :
+5 services :
 
 | Service | Image | Rôle |
 |---|---|---|
 | `api` | Custom (FastAPI + uvicorn) | API de scoring |
-| `elasticsearch` | `elasticsearch:8.x` | Stockage des logs |
-| `fluentd` | Custom (conf Fluentd) | Collecte des logs (Docker logging driver) |
-| `prometheus` | `prometheus/prometheus` | Scraping métriques |
-| `grafana` | `grafana/grafana` | Dashboards |
-| `streamlit` | Custom | Dashboard drift Evidently |
+| `prometheus` | `prom/prometheus` | Scraping métriques (:9100) |
+| `loki` | `grafana/loki` | Stockage des logs |
+| `promtail` | `grafana/promtail` | Collecte des logs (Docker json-file) |
+| `grafana` | `grafana/grafana` | Dashboards (datasources Prometheus + Loki) |
 
 ## Structure du repo
 
@@ -105,11 +104,9 @@
 │   │   └── predictor.py         # predict() + predict_from_tables() (no FastAPI dep)
 │   ├── monitoring/
 │   │   ├── __init__.py
-│   │   ├── drift.py             # Evidently drift detection
-│   │   └── metrics.py           # Prometheus metrics (Histogram, Counter)
-│   └── dashboard/
-│       ├── __init__.py
-│       └── app.py               # Streamlit app
+│   │   ├── drift.py             # Drift detection (métriques Prometheus)
+│   │   └── metrics.py           # Prometheus metrics (Histogram, Counter, Gauge)
+│   └── (dashboard/ removed — see D-02)
 ├── tests/
 │   ├── conftest.py
 │   ├── unit/
@@ -118,9 +115,9 @@
 │   └── integration/
 ├── docker/
 │   ├── api/Dockerfile
-│   ├── streamlit/Dockerfile
-│   ├── fluentd/fluent.conf
 │   ├── prometheus/prometheus.yml
+│   ├── promtail/config.yml
+│   ├── loki/config.yml
 │   └── grafana/
 │       ├── datasources/
 │       └── dashboards/
@@ -158,14 +155,29 @@ async def invalid_input_handler(request, exc):
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 ```
 
+### Métriques Prometheus
+
+Toutes les métriques sont centralisées dans `monitoring/metrics.py`. Les modules importent les objets nécessaires depuis ce module unique. L'exposition se fait sur un port séparé (9100) via `start_http_server()` dans le lifespan (voir D-18).
+
+```python
+# monitoring/metrics.py
+from prometheus_client import Counter, Gauge, Histogram
+
+REQUESTS_TOTAL = Counter("fastapi_requests_total", ...)
+PREDICTIONS_TOTAL = Counter("credit_risk_predictions_total", ...)
+
+# main.py — middleware utilise les imports depuis monitoring.metrics
+# predictor.py — _run() observe PREDICTION_DURATION et incrémente PREDICTIONS_TOTAL
+# loader.py — set MODEL_LOADED à 1 après chargement
+```
+
 ### Dependency groups séparés
 
-Streamlit et FastAPI ont des cycles de vie différents. Chaque service a ses propres dépendances.
+Seul l'API service a un dependency group dédié. Le groupe `dashboard` (Streamlit) est supprimé (D-02).
 
 ```toml
 [dependency-groups]
-api = ["fastapi", "uvicorn", "prometheus-client", "elasticsearch"]
-dashboard = ["streamlit", "evidently"]
+api = ["fastapi", "uvicorn", "prometheus-client", ...]
 dev = ["pytest", "ruff", "pre-commit", "httpx", "ty"]
 ```
 

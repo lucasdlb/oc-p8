@@ -19,7 +19,7 @@
 - [x] Endpoint `/predict` — sk_ids → DataSource → InferencePipeline — DATA_SOURCE configurable, 503 si absent
 - [x] Endpoint `/predict/rows` — JSON row-oriented, pas de DataSource requis
 - [x] Endpoint `/health`
-- [ ] Endpoint `/metrics` (Prometheus format)
+- [x] Endpoint `/metrics` — port 9100 séparé via `start_http_server()` (voir D-18)
 - [x] Schémas Pydantic pour les 7 tables (`api/schemas/`)
 - [x] Exceptions custom découplées de FastAPI (`core/exceptions.py`)
 - [x] Handlers globaux d'exceptions dans l'app
@@ -47,37 +47,37 @@
 - [x] Correlation middleware (X-Correlation-ID propagé dans chaque log)
 - [x] Format JSON structuré (production) + DevFormatter avec extras key=value (dev)
 - [x] Configurable via `ENV=dev|prod` dans `.env`
-- [ ] Sortie stdout (capté par Fluentd via Docker logging driver)
+- [ ] Sortie stdout (capté par Promtail via Docker json-file driver)
 - [ ] Données de démo pour tester le pipeline de logs
 
 ## 5. Conteneurisation (Docker)
 
 - [ ] `docker/api/Dockerfile` (FastAPI + uvicorn)
-- [ ] `docker/streamlit/Dockerfile`
-- [ ] `docker/fluentd/fluent.conf`
 - [ ] `docker/prometheus/prometheus.yml`
-- [ ] `docker/grafana/datasources/` + `dashboards/`
-- [ ] `docker-compose.yml` (6 services : api, elasticsearch, fluentd, prometheus, grafana, streamlit)
+- [ ] `docker/promtail/config.yml`
+- [ ] `docker/loki/config.yml`
+- [ ] `docker/grafana/datasources/` (Prometheus + Loki) + `dashboards/`
+- [ ] `docker-compose.yml` (5 services : api, prometheus, loki, promtail, grafana)
 - [ ] Tester le stack complet en local
 - [ ] Tester l'API conteneurisée
 
 ## 6. Monitoring API (Prometheus + Grafana)
 
-- [ ] `monitoring/metrics.py` — Histogram latence, Counter erreurs, Counter prédictions
-- [ ] Configurer Prometheus pour scraper `/metrics`
-- [ ] Datasources Grafana : Prometheus + Elasticsearch
+- [x] `monitoring/metrics.py` — HTTP metrics + business metrics (predictions, latency, model_loaded)
+- [x] Port 9100 séparé pour `/metrics` (D-18)
+- [ ] Configurer Prometheus pour scraper `api:9100`
+- [ ] Datasources Grafana : Prometheus + Loki
 - [ ] Dashboard Grafana : latence, taux erreur, volume requêtes, distribution scores
 - [ ] Captures d'écran pour la documentation
 
-## 7. Drift & Dashboard Streamlit
+## 7. Drift & monitoring avancé
 
-- [ ] `monitoring/drift.py` — détection data drift avec Evidently AI
-- [ ] `dashboard/app.py` — Streamlit
-- [ ] Afficher :
+- [ ] `monitoring/drift.py` — métriques de drift exposées via Prometheus
+- [ ] Afficher dans Grafana :
   - [ ] distribution des scores
-  - [ ] drift report Evidently
-  - [ ] latence API (depuis ES)
-  - [ ] volume de requêtes (depuis ES)
+  - [ ] indicateurs de data drift
+  - [ ] latence API (depuis Loki via LogQL)
+  - [ ] volume de requêtes
   - [ ] erreurs éventuelles
 - [ ] Captures d'écran
 
@@ -102,5 +102,5 @@
 
 - [ ] README complet (instructions de lancement, Docker, monitoring)
 - [ ] Justification des choix techniques (référence DECISIONS.md)
-- [ ] Captures d'écran (API, Grafana, Streamlit, drift)
+- [ ] Captures d'écran (API, Grafana, drift)
 - [ ] Archiver les dernières décisions dans DECISIONS.md
