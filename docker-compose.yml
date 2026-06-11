@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: api_container
+    env_file: [.env, .env.api]
+    volumes:
+      - ./${DATA_PATH}:/app/${DATA_PATH}:ro   # read-only mount?
+    ports:
+      - "${API_PORT}:${API_PORT}"
+      - "${METRICS_PORT}:${METRICS_PORT}"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"

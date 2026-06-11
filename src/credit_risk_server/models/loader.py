@@ -10,6 +10,7 @@ from pathlib import Path
 from credit_risk_models import InferencePipeline
 
 from credit_risk_server.core.exceptions import ModelLoadError
+from credit_risk_server.monitoring.metrics import MODEL_LOADED
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,11 @@ def load_model(model_path: Path) -> InferencePipeline:
     try:
         model = InferencePipeline.load(model_path)
     except Exception as e:
+        MODEL_LOADED.set(0)
         logger.error("model load failed", extra={"model_path": str(model_path)})
         raise ModelLoadError(f"failed to load model from {model_path}: {e}") from e
 
+    MODEL_LOADED.set(1)
     feature_count = len(model.feature_names)
     table_count = len(model.processing_pipelines)
     logger.info(

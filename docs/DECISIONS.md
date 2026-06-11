@@ -7,17 +7,17 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 
 ## D-01 — Stockage des logs
 
-- **Options** : SQLite / PostgreSQL / Elasticsearch
-- **Choix** : Elasticsearch
-- **Justif** : Compatible Fluentd natif, datasource Grafana native, aligné objectif portfolio pro. Plus lourd que SQLite mais la stack Docker l'absorbe.
-- **Conséquences** : Requiert vm.max_map_count=262144, mapping explicite à l'init.
-- **Révision si** : Contrainte RAM en prod → migration vers PostgreSQL.
+- **Options** : SQLite / PostgreSQL / Elasticsearch / Loki
+- **Choix** : Loki
+- **Justif** : Même écosystème que Prometheus (LogQL ≈ PromQL), consommation RAM minimale (~100-200 Mo vs 2-4 Go pour ES), pas de tuning système (pas de `vm.max_map_count`), datasource Grafana native. Aligné avec le choix d'une stack Grafana unifiée (D-02).
+- **Conséquences** : Les requêtes utilisent LogQL au lieu d'ES DSL. Streamlit interrogera Loki via l'API HTTP (`/loki/api/v1/query_range`).
+- **Révision si** : Besoin de recherche full-text avancé → migration vers Elasticsearch.
 
 ## D-02 — Dashboards monitoring
 
 - **Options** : Streamlit seul / Grafana seul / Streamlit + Grafana
-- **Choix** : Streamlit + Grafana
-- **Justif** : Grafana = standard industrie pour métriques API (latence, erreurs, volume). Streamlit = adapté pour drift ML Evidently (Python-native). Chaque outil dans son rôle.
+- **Choix** : Grafana seul
+- **Justif** : Grafana couvre métriques API (Prometheus) ET exploration de logs (Loki). Le drift Evidently sera exposé comme métriques Prometheus visibles dans Grafana, pas dans un dashboard Streamlit séparé. Supprime un conteneur (5 services au lieu de 6) et un dependency group.
 
 ## D-03 — Format entrée API /predict
 
@@ -25,17 +25,18 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Choix** : 7 tables brutes via DataSource + endpoint row-oriented
 - **Justif** : Le endpoint `/predict` charge les données via DataSource (CSV, SQL…), le endpoint `/predict/rows` accepte du JSON inline. Les deux passent par l'InferencePipeline, fidèle au P6. L'approche DataSource permet un filtrage par `sk_ids` coté serveur.
 
-## D-04 — Ingestion logs vers Elasticsearch
+## D-04 — Ingestion logs
 
-- **Options** : elasticsearch-py direct / Fluentd / Logstash
-- **Choix** : Fluentd
-- **Justif** : Standard de collecte de logs en conteneur (Docker logging driver), découple l'API du stockage, plus "production-like" que l'écriture directe.
+- **Options** : elasticsearch-py direct / Fluentd / Promtail / Logstash
+- **Choix** : Promtail
+- **Justif** : Natif Loki, binaire Go léger, scrap les fichiers logs Docker. Remplace le driver Fluentd par une config simple. Pas de dépendance Ruby ni de plugin Docker logging driver.
+- **Conséquences** : Docker logging driver = `json-file` (standard). Promtail scrap `/var/lib/docker/containers`.
 
 ## D-05 — Kibana
 
 - **Options** : Oui / Non
 - **Choix** : Non
-- **Justif** : Grafana couvre le besoin d'exploration (datasource ES). Évite un 7e conteneur et la redondance.
+- **Justif** : Grafana couvre le besoin d'exploration de logs (datasource Loki). Évite un conteneur supplémentaire et la redondance.
 
 ## D-06 — Stratégie de branching
 
@@ -51,9 +52,9 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 
 ## D-08 — Dependency groups pyproject.toml
 
-- **Options** :Tout dans dependencies / groups séparés (api / dashboard / dev)
-- **Choix** : Groups séparés
-- **Justif** : FastAPI et Streamlit ont des cycles de vie et des deps différents. Dockerfiles séparés installent seulement le groupe nécessaire.
+- **Options** : Tout dans dependencies / groups séparés (api / dashboard / dev)
+- **Choix** : Groups séparés (api / dev)
+- **Justif** : Seul l'API service tourne en Docker. Le groupe `dashboard` (Streamlit/Evidently) est supprimé (D-02). Chaque Dockerfile installe seulement le groupe nécessaire.
 
 ## D-09 — Dépendance preprocessing oc-p6
 
@@ -138,3 +139,10 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Justif** : Format lisible, grep-friendly, logfmt-compatible. En production, le
   JSONFormatter sérialise déjà en JSON structuré. Le DevFormatter ne sert qu'en local.
 - **Conséquences** : Sortie type : `2024-01-15 10:30:00 | ... | data source created | source_type=csv data_path=data/`
+
+## D-18 — Exposition /metrics
+
+- **Options** : Port séparé 9100 (`start_http_server`) / ASGI mount sur port 8000 (`make_asgi_app`) / Route FastAPI `/metrics`
+- **Choix** : Port séparé 9100 (`start_http_server`)
+- **Justif** : Isolation du trafic metrics du trafic API. Config Prometheus standard (scrape sur port dédié). Pas de pollution des logs API par les scrapes. Le port 9100 est déjà configuré dans Docker et Prometheus.
+- **Conséquences** : La route `/metrics` sur le port 8000 est supprimée. Docker expose 2 ports (8000 + 9100).

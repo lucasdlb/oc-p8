@@ -59,10 +59,9 @@ class ApiSettings(AppSettings):
     """API service configuration — loaded from ``.env.api``."""
 
     model_path: Path
-    elasticsearch_url: str
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    metrics_port: int = 9090
+    metrics_port: int = 9100
     data_source: Literal["csv", "sql"] | None = "csv"
     data_path: Path = Path("data")
 
