@@ -146,7 +146,7 @@ class TestModelFailure:
     def test_runtime_error_becomes_prediction_error(self):
         from unittest.mock import MagicMock
 
-        from conftest import make_raw_tables
+        from tests.conftest import make_raw_tables
 
         model = MagicMock()
         model.predict.side_effect = RuntimeError("internal model failure")
@@ -157,7 +157,7 @@ class TestModelFailure:
     def test_invalid_input_error_passes_through(self):
         from unittest.mock import MagicMock
 
-        from conftest import make_raw_tables
+        from tests.conftest import make_raw_tables
 
         model = MagicMock()
         model.predict.side_effect = InvalidInputError("bad features")

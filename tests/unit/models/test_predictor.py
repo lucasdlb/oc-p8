@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 import numpy as np
 import polars as pl
 import pytest
-from conftest import MINIMAL_APP_ROW, make_application_rows
 
 from credit_risk_server.api.schemas.prediction import PredictRequest
 from credit_risk_server.core.exceptions import InvalidInputError, PredictionError
 from credit_risk_server.models.predictor import predict, predict_from_tables
+from tests.conftest import MINIMAL_APP_ROW, make_application_rows
 
 
 def _make_model(ids=None, probas=None):

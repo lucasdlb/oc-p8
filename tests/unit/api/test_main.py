@@ -66,7 +66,7 @@ class TestCorrelationMiddleware:
 
 class TestExceptionHandlersViaAPI:
     def test_invalid_input_returns_422(self):
-        from conftest import MINIMAL_APP_ROW
+        from tests.conftest import MINIMAL_APP_ROW
 
         model = MagicMock()
         model.predict.side_effect = InvalidInputError("bad input")
@@ -96,7 +96,7 @@ class TestExceptionHandlersViaAPI:
         assert resp.status_code == 503
 
     def test_prediction_error_returns_500(self):
-        from conftest import MINIMAL_APP_ROW
+        from tests.conftest import MINIMAL_APP_ROW
 
         model = MagicMock()
         model.predict.side_effect = PredictionError("internal failure")

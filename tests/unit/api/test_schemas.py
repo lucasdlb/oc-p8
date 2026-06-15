@@ -1,7 +1,6 @@
 """Validation tests for Pydantic schema models — all 7 tables, request, response."""
 
 import pytest
-from conftest import MINIMAL_APP_ROW
 from pydantic import ValidationError
 
 from credit_risk_server.api.schemas.application import ApplicationRow
@@ -16,6 +15,7 @@ from credit_risk_server.api.schemas.prediction import (
     PredictResponse,
 )
 from credit_risk_server.api.schemas.previous_application import PreviousApplicationRow
+from tests.conftest import MINIMAL_APP_ROW
 
 # ---------------------------------------------------------------------------
 # ApplicationRow
