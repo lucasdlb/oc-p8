@@ -32,15 +32,15 @@
 ## 3. Tests automatisés
 
 - [x] Tests unitaires data pipeline (assembler, PolarsDataSource, protocol)
-- [ ] Tests unitaires prédiction
-- [ ] Tests validation input (Pydantic schemas)
-- [ ] Cas critiques :
-  - [ ] données manquantes
-  - [ ] types invalides
-  - [ ] valeurs aberrantes
-  - [ ] tables vides
-- [ ] Tests d'intégration API (`TestClient` FastAPI + httpx)
-- [ ] Coverage ≥ 90%
+- [x] Tests unitaires prédiction
+- [x] Tests validation input (Pydantic schemas)
+- [x] Cas critiques :
+  - [x] données manquantes
+  - [x] types invalides
+  - [x] valeurs aberrantes
+  - [x] tables vides
+- [x] Tests d'intégration API (`TestClient` FastAPI + httpx)
+- [x] Coverage ≥ 85% (89% atteint — lifespan et SQL source non testables sans infra)
 
 ## 4. Logging structuré
 

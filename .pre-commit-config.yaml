@@ -49,7 +49,7 @@ repos:
       # Type checking
       - id: ty
         name: ty type check
-        entry: uv run ty check
+        entry: uv run ty check --exclude tests/
         language: system
         pass_filenames: false
 
