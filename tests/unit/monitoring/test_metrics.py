@@ -36,10 +36,10 @@ class TestMetricLabels:
     def test_requests_total_labels(self):
         assert "method" in REQUESTS_TOTAL._labelnames
         assert "endpoint" in REQUESTS_TOTAL._labelnames
+        assert "status_code" in REQUESTS_TOTAL._labelnames
 
     def test_prediction_duration_labels(self):
         assert "endpoint" in PREDICTION_DURATION._labelnames
 
     def test_predictions_total_labels(self):
         assert "endpoint" in PREDICTIONS_TOTAL._labelnames
-        assert "status" in PREDICTIONS_TOTAL._labelnames

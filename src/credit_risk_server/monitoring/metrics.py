@@ -16,7 +16,7 @@ from prometheus_client import Counter, Gauge, Histogram
 REQUESTS_TOTAL = Counter(
     "fastapi_requests_total",
     "Total number of HTTP requests",
-    ["method", "endpoint"],
+    ["method", "endpoint", "status_code"],
 )
 
 REQUEST_LATENCY = Histogram(
@@ -36,15 +36,15 @@ ACTIVE_REQUESTS = Gauge(
 
 PREDICTIONS_TOTAL = Counter(
     "credit_risk_predictions_total",
-    "Total number of scoring predictions",
-    ["endpoint", "status"],
+    "Total number of successful scoring predictions",
+    ["endpoint"],
 )
 
 PREDICTION_DURATION = Histogram(
     "credit_risk_prediction_duration_seconds",
     "Prediction latency in seconds",
     ["endpoint"],
-    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+    buckets=(0.01, 0.025, 0.05, 0.075, 0.1, 0.15, 0.25, 0.5, 1.0, 2.0, 2.5, 3.0, 4.0, 5.0, 10.0),
 )
 
 MODEL_LOADED = Gauge(

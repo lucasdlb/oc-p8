@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
     4. Creates the :class:`~credit_risk_server.data.source.DataSource`
        from settings and stores it on ``app.state.data_source``.
 
-    On shutdown the metrics server is stopped and both singletons are
+    On shutdown the metrics server and both singletons are
     cleared to release resources.
     """
     server, t = start_http_server(api_settings.metrics_port)
@@ -80,6 +80,7 @@ async def lifespan(app: FastAPI):
         logger.info("data source ready", extra={"source_type": api_settings.data_source})
     else:
         logger.info("data source not configured — /predict endpoint disabled")
+
     yield
     server.shutdown()
     server.server_close()
@@ -105,7 +106,9 @@ async def add_prometheus_metrics(request: Request, call_next):
         response = await call_next(request)
     ACTIVE_REQUESTS.dec()
 
-    REQUESTS_TOTAL.labels(method=method, endpoint=endpoint).inc()
+    REQUESTS_TOTAL.labels(
+        method=method, endpoint=endpoint, status_code=str(response.status_code)
+    ).inc()
 
     return response
 
