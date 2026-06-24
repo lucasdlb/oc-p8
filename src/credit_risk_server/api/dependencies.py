@@ -1,9 +1,10 @@
-"""FastAPI dependency injection — model and data source singletons."""
+"""FastAPI dependency injection — model, data source, and drift monitor singletons."""
 
 from credit_risk_models import InferencePipeline
 from fastapi import Request
 
 from credit_risk_server.data.source import DataSource
+from credit_risk_server.monitoring.drift import DriftMonitor
 
 
 def get_model(request: Request) -> InferencePipeline:
@@ -23,3 +24,12 @@ def get_data_source(request: Request) -> DataSource | None:
     Routes that require a source should check for None and raise 503.
     """
     return request.app.state.data_source
+
+
+def get_drift_monitor(request: Request) -> DriftMonitor | None:
+    """Return the :class:`~credit_risk_server.monitoring.drift.DriftMonitor` singleton.
+
+    Returns None when drift monitoring is disabled or no reference snapshot
+    was found at startup.
+    """
+    return request.app.state.drift_monitor

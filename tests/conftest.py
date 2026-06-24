@@ -147,6 +147,7 @@ def _make_test_app(model=None, data_source=None):
 
     test_app.state.model = model
     test_app.state.data_source = data_source
+    test_app.state.drift_monitor = None
     return test_app
 
 

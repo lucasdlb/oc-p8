@@ -28,7 +28,7 @@ uv run ruff check . --fix    # auto-fix
 uv run ruff check .          # vérification
 uv run ruff format .         # formatage
 uv run ty check              # type check
-uv run pytest                # tests (90% coverage minimum)
+uv run pytest                # tests (≥85% coverage, voir pyproject.toml fail_under)
 ```
 
 Pre-commit hooks : `ruff-fix → ruff-check → ruff-format → ty`. Pre-push : `pytest`.

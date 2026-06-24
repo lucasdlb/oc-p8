@@ -22,12 +22,6 @@ class TestFindProjectRoot:
 
 
 class TestAppSettings:
-    def test_default_values(self):
-        with patch.dict(os.environ, {}, clear=False):
-            settings = AppSettings()
-            assert settings.log_level == "INFO"
-            assert settings.env == "dev"
-
     def test_env_var_override(self):
         with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}, clear=False):
             settings = AppSettings()

@@ -53,6 +53,9 @@ Thumbs.db
 # Docker
 docker/grafana/data/
 
+# Evidently workspace (bind-mounted, gitignored)
+workspace/
+
 # Other
 tmp.txt
 

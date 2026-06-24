@@ -16,7 +16,7 @@ Le modèle provient du projet `~/oc/oc-p6` et est bundlé dans ce repo.
 - **Sortie** : `(SK_ID_CURR, probabilité classe positive)`
 - **Features** : 305 features sélectionnées (voir `models/features_prod.json`)
 - **Preprocessing** : 7 pipelines sklearn par table (cleaner → imputer → aggregator → transformer → encoder → schema), puis CrossTableTransformer, puis NaNReplacer + estimator
-- **Fichiers** : `inference_pipeline_debug.pkl` (~5 Mo), `features_prod.json`, `final_model_prod.pkl` (~2 Mo)
+- **Fichiers** : `inference_pipeline_debug.pkl` (~5 Mo) — pickle auto-suffisant contenant le preprocessing ET l'estimateur. Bundlé dans `artifacts/`. `features_prod.json` et `final_model_prod.pkl` ne sont pas reproduits dans ce repo : le pickle embarque le feature set attendu.
 
 ## Objectif portfolio
 

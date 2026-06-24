@@ -28,6 +28,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from prometheus_client import start_http_server
 
@@ -38,6 +39,7 @@ from credit_risk_server.core.exceptions import InvalidInputError, ModelLoadError
 from credit_risk_server.core.logging import correlation_id, setup_logging
 from credit_risk_server.data.factory import make_source
 from credit_risk_server.models.loader import load_model
+from credit_risk_server.monitoring.drift import load_reference
 from credit_risk_server.monitoring.metrics import (
     ACTIVE_REQUESTS,
     REQUEST_LATENCY,
@@ -59,8 +61,12 @@ async def lifespan(app: FastAPI):
        and stores it on ``app.state.model``.
     4. Creates the :class:`~credit_risk_server.data.source.DataSource`
        from settings and stores it on ``app.state.data_source``.
+    5. Loads the drift reference snapshot and creates an Evidently
+       :class:`~credit_risk_server.monitoring.drift.DriftMonitor` on
+       ``app.state.drift_monitor``; starts the periodic compute task
+       when drift is enabled and a reference is found.
 
-    On shutdown the metrics server is stopped and both singletons are
+    On shutdown the drift task, metrics server, and all singletons are
     cleared to release resources.
     """
     server, t = start_http_server(api_settings.metrics_port)
@@ -80,12 +86,35 @@ async def lifespan(app: FastAPI):
         logger.info("data source ready", extra={"source_type": api_settings.data_source})
     else:
         logger.info("data source not configured — /predict endpoint disabled")
+
+    monitor = load_reference(
+        api_settings.drift_reference_path,
+        api_settings.drift_workspace_path,
+        buffer_size=api_settings.drift_buffer_size,
+        min_samples=api_settings.drift_min_samples,
+        psi_threshold=api_settings.drift_psi_threshold,
+    )
+    app.state.drift_monitor = monitor
+    if monitor is not None and api_settings.drift_enabled:
+        monitor.start_periodic_compute(interval_seconds=api_settings.drift_interval)
+        logger.info(
+            "drift monitoring started",
+            extra={
+                "interval": api_settings.drift_interval,
+                "workspace": str(api_settings.drift_workspace_path),
+            },
+        )
+    elif monitor is None:
+        logger.info("drift monitoring disabled — no reference snapshot found")
     yield
+    if monitor is not None:
+        monitor.stop_periodic_compute()
     server.shutdown()
     server.server_close()
     t.join()
     app.state.model = None
     app.state.data_source = None
+    app.state.drift_monitor = None
     logger.info("api shut down")
 
 
@@ -105,7 +134,9 @@ async def add_prometheus_metrics(request: Request, call_next):
         response = await call_next(request)
     ACTIVE_REQUESTS.dec()
 
-    REQUESTS_TOTAL.labels(method=method, endpoint=endpoint).inc()
+    REQUESTS_TOTAL.labels(
+        method=method, endpoint=endpoint, status_code=str(response.status_code)
+    ).inc()
 
     return response
 
@@ -145,3 +176,13 @@ async def prediction_error_handler(request, exc):
     """Return 500 Internal Server Error for :class:`PredictionError`."""
     logger.error("prediction error", extra={"detail": str(exc)})
     return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """Return 422 Unprocessable Entity for Pydantic validation errors."""
+    logger.warning(
+        "validation error",
+        extra={"detail": exc.errors(), "endpoint": str(request.url.path)},
+    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})

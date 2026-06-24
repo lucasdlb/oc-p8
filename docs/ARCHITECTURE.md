@@ -3,9 +3,9 @@
 ## Flux de données
 
 ```
-                          ┌─────────────┐
-                     ┌──► │ Prometheus  │
-                     │    └──────┬──────┘
+                           ┌─────────────┐
+                      ┌──► │ Prometheus  │
+                      │    └──────┬──────┘
 ┌──────────────┐     │           │ scrape :9100
 │   FastAPI    │─────┤           ▼
 │  /predict    │     │    ┌─────────────┐
@@ -20,12 +20,14 @@
        │                  ┌─────────────┐
        │                  │    Loki      │
        │                  └─────────────┘
-       │                         ▲
-       │                         │
-┌──────┴───────┐                 │
-│  Monitoring  │─────────────────┘
-│  (drift.py) │   LogQL queries pour drift
-└──────────────┘
+       │
+       │  Evidently Snapshot
+       ▼
+┌──────────────┐     ┌─────────────────┐
+│  DriftMonitor│────►│ Evidently UI    │
+│ (drift.py)   │ ws  │ :8501           │
+└──────────────┘     └─────────────────┘
+  bind mount ./workspace (shared)
 ```
 
 ## Stack
@@ -36,34 +38,44 @@
 | Modèle | LightGBM (pickle P6) | InferencePipeline complet |
 | Logs structurés | JSON stdout → Promtail → Loki | Prédictions, latence, erreurs |
 | Métriques | prometheus_client → Prometheus (port 9100) | Latence, taux erreur, volume, prédictions |
-| Dashboards | Grafana | Métriques temps réel + logs + drift |
-| Drift ML | Métriques Prometheus dans `monitoring/drift.py` | Data drift, distribution scores |
+| Dashboards | Grafana | HTTP, latence, erreurs, hardware, logs |
+| Drift ML | Evidently UI (`evidently-ui` :8501) | PSI par feature, distribution scores, drifted-columns count |
 | Tests | pytest + httpx | Unit + integration, 90% coverage |
-| Conteneurisation | Docker Compose | 5 services |
+| Conteneurisation | Docker Compose | 6 services (+ node-exporter, cadvisor) |
 | CI/CD | GitHub Actions → HF Spaces | Lint, test, build, deploy |
 
 ## Docker Compose
 
-5 services :
+6 services principaux (+ 2 exporters) :
 
 | Service | Image | Rôle |
 |---|---|---|
-| `api` | Custom (FastAPI + uvicorn) | API de scoring |
+| `api` | Custom (FastAPI + uvicorn) | API de scoring + DriftMonitor |
 | `prometheus` | `prom/prometheus` | Scraping métriques (:9100) |
 | `loki` | `grafana/loki` | Stockage des logs |
 | `promtail` | `grafana/promtail` | Collecte des logs (Docker json-file) |
 | `grafana` | `grafana/grafana` | Dashboards (datasources Prometheus + Loki) |
+| `evidently-ui` | Custom (python:3.12-slim + evidently) | UI drift ML (:8501, workspace partagé) |
+| `node-exporter` | `prom/node-exporter` | Hardware metrics (CPU, RAM, disk) |
+| `cadvisor` | `gcr.io/cadvisor/cadvisor` | Container metrics (CPU, mémoire par conteneur) |
 
 ## Structure du repo
 
 ```
 .
+├── artifacts/
+│   └── inference_pipeline_debug.pkl  # InferencePipeline pickle (~5 Mo, self-contained)
+├── data/                         # 7 CSV brutes + data/reference/ (drift snapshot, gitignored)
 ├── docs/
 │   ├── CONTEXT.md              # Mission, modèle source, objectif
 │   ├── ARCHITECTURE.md         # Ce fichier
 │   ├── DECISIONS.md            # Registre des choix délibérés
 │   ├── ROADMAP.md              # Phases d'implémentation
 │   └── STACK.md                # Stack technique validée
+├── scripts/
+│   ├── build_reference.py      # snapshot de référence (scores + features parquet)
+│   ├── predict_sampler.py      # échantillonneur de prédictions réel
+│   └── traffic_simulator.py    # simulateur de trafic mixte (logs stdout Promtail-ready)
 ├── src/credit_risk_server/
 │   ├── __init__.py
 │   ├── api/
@@ -104,23 +116,46 @@
 │   │   └── predictor.py         # predict() + predict_from_tables() (no FastAPI dep)
 │   ├── monitoring/
 │   │   ├── __init__.py
-│   │   ├── drift.py             # Drift detection (métriques Prometheus)
+│   │   ├── drift.py             # Drift detection (Evidently UI — PSI, snapshots)
 │   │   └── metrics.py           # Prometheus metrics (Histogram, Counter, Gauge)
 │   └── (dashboard/ removed — see D-02)
 ├── tests/
 │   ├── conftest.py
 │   ├── unit/
-│   │   └── data/
-│   │       └── test_data_pipeline.py
+│   │   ├── api/
+│   │   │   ├── test_dependencies.py
+│   │   │   ├── test_main.py
+│   │   │   └── test_schemas.py
+│   │   ├── core/
+│   │   │   ├── test_config.py
+│   │   │   ├── test_exceptions.py
+│   │   │   └── test_logging.py
+│   │   ├── data/
+│   │   │   ├── test_data_pipeline.py
+│   │   │   └── test_factory.py
+│   │   ├── models/
+│   │   │   ├── test_loader.py
+│   │   │   └── test_predictor.py
+│   │   ├── monitoring/
+│   │   │   ├── test_drift.py
+│   │   │   └── test_metrics.py
+│   │   └── test_critical_cases.py    # cas critiques: manquants, invalides, aberrants, vides
 │   └── integration/
+│       └── test_api.py
 ├── docker/
 │   ├── api/Dockerfile
+│   ├── evidently/Dockerfile       # Evidently UI (python:3.12-slim + evidently)
 │   ├── prometheus/prometheus.yml
 │   ├── promtail/config.yml
 │   ├── loki/config.yml
 │   └── grafana/
 │       ├── datasources/
+│       │   └── datasources.yml    # Prometheus + Loki
 │       └── dashboards/
+│           ├── dashboard.json          # API : latence, taux erreur, volume, scores
+│           ├── dashboard-hardware.json # node-exporter + cadvisor
+│           └── dashboard.yml           # provisioning
+├── workspace/                    # Evidently UI workspace (bind mount, gitignored)
 ├── .env.example                 # shared + API sections
 ├── .env.api                     # API-specific vars (gitignored)
 ├── .gitignore

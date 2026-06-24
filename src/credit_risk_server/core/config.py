@@ -64,6 +64,13 @@ class ApiSettings(AppSettings):
     metrics_port: int = 9100
     data_source: Literal["csv", "sql"] | None = "csv"
     data_path: Path = Path("data")
+    drift_enabled: bool = True
+    drift_reference_path: Path = Path("data/reference")
+    drift_workspace_path: Path = Path("workspace")
+    drift_interval: int = 60
+    drift_buffer_size: int = 5000
+    drift_min_samples: int = 50
+    drift_psi_threshold: float = 0.25
 
     model_config = SettingsConfigDict(env_file=str(PROJECT_ROOT / ".env.api"), extra="ignore")
 
@@ -71,7 +78,7 @@ class ApiSettings(AppSettings):
     @classmethod
     def resolve_relative_paths(cls, values: dict) -> dict:
         """Turn relative paths into absolute paths rooted at the project directory."""
-        for key in ("model_path", "data_path"):
+        for key in ("model_path", "data_path", "drift_reference_path", "drift_workspace_path"):
             raw = values.get(key)
             if raw is None:
                 continue
