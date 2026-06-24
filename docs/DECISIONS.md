@@ -19,6 +19,45 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Choix** : Grafana seul
 - **Justif** : Grafana couvre métriques API (Prometheus) ET exploration de logs (Loki). Le drift Evidently sera exposé comme métriques Prometheus visibles dans Grafana, pas dans un dashboard Streamlit séparé. Supprime un conteneur (5 services au lieu de 6) et un dependency group.
 
+## D-02b — Drift monitoring : Evidently UI (révise D-02)
+
+- **Options** : Drift dans Grafana via Prometheus / Evidently UI dédiée (6e conteneur)
+- **Choix** : Grafana pour l'infra/HTTP + Evidently UI pour le drift ML/statistique
+- **Justif** : Evidently offre une profondeur statistique purpose-built (20+ stattests,
+  panels ML natifs, snapshots comparables dans le temps) qu'une reproduction Prometheus
+  ne pourrait qu'approximer. La séparation des concerns est nette :
+  Grafana = HTTP, latence, erreurs, hardware ; Evidently UI = PSI par feature,
+  distribution des scores, drifted-columns count. Grafana reste le point d'entrée
+  unique pour l'infra ; Evidently UI est le point d'entrée dédié pour l'observabilité ML.
+- **Conséquences** : 6 services Docker (ajout de `evidently-ui` sur :8501).
+  `drift.py` ne touche plus Prometheus — il produit des Evidently Snapshots écrits
+  dans un Workspace partagé (bind mount `./workspace`). `metrics.py` garde ses
+  métriques HTTP/business intactes.
+- **Révision si** : Besoin de corréler drift et infra dans un même dashboard →
+  réintégrer les drifted-count dans Prometheus via un bridge custom.
+
+## D-22 — Métrique de drift : PSI
+
+- **Options** : PSI / KS test / Wasserstein / Chi-2 / auto (Evidently)
+- **Choix** : PSI (Population Stability Index), seuil configurable (défaut 0.25)
+- **Justif** : PSI est interprétable ( < 0.1 stable, 0.1–0.25 modéré, > 0.25 drift),
+  applicable aux colonnes numériques ET catégorielles, et standard dans le crédit.
+  Le seuil 0.25 signale un drift significatif nécessitant une investigation.
+- **Conséquences** : `ValueDrift(method="psi", threshold=0.25)` pour le score et
+  chaque feature monitorée. `DriftedColumnsCount(drift_share=0.3)` déclare un
+  dataset drifté si ≥ 30% des colonnes dérivent.
+
+## D-23 — Buffer et compute périodique
+
+- **Options** : Compute synchrone à chaque requête / compute périodique asynchrone
+- **Choix** : `collections.deque(maxlen=5000)` + `asyncio` task périodique (60s)
+- **Justif** : Le drift est un signal agrégé, pas par-requête. Un ring buffer
+  fixe la fenêtre glissante sans croissance mémoire. Le compute périodique via
+  `asyncio.to_thread()` ne bloque pas l'event loop FastAPI.
+- **Conséquences** : `DriftMonitor.record()` ajoute au deque (O(1)).
+  `start_periodic_compute()` lance une task qui appelle `compute()` toutes les
+  60s. `compute()` skip si < `min_samples` (défaut 50) dans le buffer.
+
 ## D-03 — Format entrée API /predict
 
 - **Options** : Features pré-processées (305) / 7 tables brutes (pipeline complet) / les deux endpoints

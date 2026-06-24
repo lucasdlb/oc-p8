@@ -1,8 +1,8 @@
-# OC P8 — Déployez et monitizez votre modèle de scoring
+# OC P8 — Déployez et monitorez votre modèle de scoring
 
 Déploiement et monitoring d'un modèle de scoring crédit (LightGBM) en production.
 
-API FastAPI, logging Fluentd → Elasticsearch, métriques Prometheus, dashboards Grafana + Streamlit, drift detection Evidently AI.
+API FastAPI, logs structurés JSON → Promtail → Loki, métriques Prometheus, dashboards Grafana, drift detection Evidently UI.
 
 ## Documentation
 
@@ -26,9 +26,9 @@ docker compose up
 
 ## Stack
 
-FastAPI · LightGBM · Elasticsearch · Fluentd · Prometheus · Grafana · Streamlit · Evidently AI · Docker · GitHub Actions
+FastAPI · LightGBM · Loki · Promtail · Prometheus · Grafana · Evidently AI · Docker · GitHub Actions
 
 ![CI](https://img.shields.io/badge/CI-GitHub_Actions-blue)
-![Coverage](https://codecov.io/gh/TON_USER/oc-p8/branch/main/graph/badge.svg)
+![Coverage](https://codecov.io/gh/lucasdlb/oc-p8/branch/main/graph/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)

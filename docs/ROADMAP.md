@@ -29,6 +29,12 @@
 - [x] Data layer : DataSource protocol, PolarsDataSource, assembler, factory
 - [x] Correlation middleware (X-Correlation-ID)
 
+## 3-bis. Scripts utilitaires
+
+- [x] `scripts/build_reference.py` — snapshot de référence (scores + features pour chaque table)
+- [x] `scripts/predict_sampler.py` — échantillonneur de prédictions réel
+- [x] `scripts/traffic_simulator.py` — simulateur de trafic mixte (health/predict/erreurs) avec logs stdout Promtail-ready
+
 ## 3. Tests automatisés
 
 - [x] Tests unitaires data pipeline (assembler, PolarsDataSource, protocol)
@@ -47,39 +53,43 @@
 - [x] Correlation middleware (X-Correlation-ID propagé dans chaque log)
 - [x] Format JSON structuré (production) + DevFormatter avec extras key=value (dev)
 - [x] Configurable via `ENV=dev|prod` dans `.env`
-- [ ] Sortie stdout (capté par Promtail via Docker json-file driver)
-- [ ] Données de démo pour tester le pipeline de logs
+- [x] Sortie stdout (capté par Promtail via Docker json-file driver)
+- [x] Données de démo pour tester le pipeline de logs (`scripts/traffic_simulator.py`)
 
 ## 5. Conteneurisation (Docker)
 
-- [ ] `docker/api/Dockerfile` (FastAPI + uvicorn)
-- [ ] `docker/prometheus/prometheus.yml`
-- [ ] `docker/promtail/config.yml`
-- [ ] `docker/loki/config.yml`
-- [ ] `docker/grafana/datasources/` (Prometheus + Loki) + `dashboards/`
-- [ ] `docker-compose.yml` (5 services : api, prometheus, loki, promtail, grafana)
-- [ ] Tester le stack complet en local
-- [ ] Tester l'API conteneurisée
+- [x] `docker/api/Dockerfile` (FastAPI + uvicorn)
+- [x] `docker/prometheus/prometheus.yml`
+- [x] `docker/promtail/config.yml`
+- [x] `docker/loki/config.yml`
+- [x] `docker/grafana/datasources/` (Prometheus + Loki) + `dashboards/` (dashboard.json, dashboard-hardware.json)
+- [x] `docker/evidently/Dockerfile` (Evidently UI python:3.12-slim)
+- [x] `docker-compose.yml` (8 services : api, prometheus, loki, promtail, grafana, evidently-ui, node-exporter, cadvisor)
+- [x] Tester le stack complet en local
+- [x] Tester l'API conteneurisée
 
 ## 6. Monitoring API (Prometheus + Grafana)
 
 - [x] `monitoring/metrics.py` — HTTP metrics + business metrics (predictions, latency, model_loaded)
 - [x] Port 9100 séparé pour `/metrics` (D-18)
-- [ ] Configurer Prometheus pour scraper `api:9100`
-- [ ] Datasources Grafana : Prometheus + Loki
-- [ ] Dashboard Grafana : latence, taux erreur, volume requêtes, distribution scores
+- [x] Configurer Prometheus pour scraper `api:9100` (prometheus.yml)
+- [x] Datasources Grafana : Prometheus + Loki (datasources.yml)
+- [x] Dashboard Grafana : latence, taux erreur, volume requêtes, distribution scores (dashboard.json 804 lignes)
 - [ ] Captures d'écran pour la documentation
 
 ## 7. Drift & monitoring avancé
 
-- [ ] `monitoring/drift.py` — métriques de drift exposées via Prometheus
+- [x] `monitoring/drift.py` — DriftMonitor (Evidently AI, PSI par feature + score)
+- [x] `scripts/build_reference.py` — snapshot de référence (scores + features parquet)
+- [x] Conteneur `evidently-ui` (:8501) — UI Evidently avec workspace partagé (D-02b)
+- [x] Dashboard Evidently : drifted-columns count, score PSI, feature PSI, score quantiles
+- [x] `DriftMonitor.record()` appelé après chaque prédiction (predictor.py)
+- [x] Compute périodique asynchrone (60s, deque maxlen=5000, D-23)
 - [ ] Afficher dans Grafana :
-  - [ ] distribution des scores
-  - [ ] indicateurs de data drift
   - [ ] latence API (depuis Loki via LogQL)
   - [ ] volume de requêtes
   - [ ] erreurs éventuelles
-- [ ] Captures d'écran
+- [ ] Captures d'écran (Grafana + Evidently UI)
 
 ## 8. CI/CD
 
