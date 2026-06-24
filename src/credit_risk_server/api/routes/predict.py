@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from credit_risk_server.api.dependencies import get_data_source, get_model
+from credit_risk_server.api.dependencies import get_data_source, get_drift_monitor, get_model
 from credit_risk_server.api.schemas.prediction import (
     PredictFromSourceRequest,
     PredictRequest,
@@ -15,6 +15,7 @@ from credit_risk_server.api.schemas.prediction import (
 from credit_risk_server.data.assembler import assemble
 from credit_risk_server.data.source import DataSource
 from credit_risk_server.models.predictor import predict, predict_from_tables
+from credit_risk_server.monitoring.drift import DriftMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ def predict_from_source(
     request: PredictFromSourceRequest,
     model=Depends(get_model),  # noqa: B008
     source: DataSource | None = Depends(get_data_source),  # noqa: B008
+    monitor: DriftMonitor | None = Depends(get_drift_monitor),  # noqa: B008
 ) -> list[PredictResponse]:
     """Score clients by their ``SK_ID_CURR`` using data loaded from the configured source.
 
@@ -38,6 +40,7 @@ def predict_from_source(
         request: JSON body containing the list of ``sk_ids`` to score.
         model: Inference pipeline singleton injected from ``app.state``.
         source: Data source singleton injected from ``app.state``.
+        monitor: Drift monitor singleton (may be None if disabled).
 
     Returns:
         List of :class:`PredictResponse` with ``sk_id_curr`` and ``probability``.
@@ -47,7 +50,7 @@ def predict_from_source(
     sk_ids = set(request.sk_ids)
     logger.info("predict request", extra={"sk_ids": list(sk_ids), "count": len(sk_ids)})
     raw_tables = assemble(source, sk_ids=sk_ids)
-    results = predict_from_tables(model, raw_tables)
+    results = predict_from_tables(model, raw_tables, monitor=monitor)
     logger.info("predict response", extra={"count": len(results)})
     return [PredictResponse(sk_id_curr=int(sk), probability=float(prob)) for sk, prob in results]
 
@@ -56,6 +59,7 @@ def predict_from_source(
 def predict_from_rows(
     request: PredictRequest,
     model=Depends(get_model),  # noqa: B008
+    monitor: DriftMonitor | None = Depends(get_drift_monitor),  # noqa: B008
 ) -> list[PredictResponse]:
     """Score clients from inline row data posted in the request body.
 
@@ -67,12 +71,13 @@ def predict_from_rows(
         request: JSON body containing all table rows
             (``application`` is required; remaining tables are optional).
         model: Inference pipeline singleton injected from ``app.state``.
+        monitor: Drift monitor singleton (may be None if disabled).
 
     Returns:
         List of :class:`PredictResponse` with ``sk_id_curr`` and ``probability``.
     """
     app_count = len(request.application)
     logger.info("predict/rows request", extra={"application_rows": app_count})
-    results = predict(model, request)
+    results = predict(model, request, monitor=monitor)
     logger.info("predict/rows response", extra={"count": len(results)})
     return [PredictResponse(sk_id_curr=int(sk), probability=float(prob)) for sk, prob in results]

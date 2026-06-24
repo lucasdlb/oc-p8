@@ -7,6 +7,7 @@ services:
     env_file: [.env, .env.api]
     volumes:
       - ./${DATA_PATH:-data}:/app/${DATA_PATH:-data}:ro
+      - ./workspace:/app/workspace
     ports:
       - "${API_PORT:-8000}:${API_PORT:-8000}"
       - "${METRICS_PORT:-9100}:${METRICS_PORT:-9100}"
@@ -80,6 +81,16 @@ services:
       - /var/lib/docker:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     # No host port mapping needed — Prometheus scrapes via Docker network at cadvisor:8080
+
+  evidently-ui:
+    build:
+      context: .
+      dockerfile: docker/evidently/Dockerfile
+    container_name: evidently-ui
+    volumes:
+      - ./workspace:/workspace
+    ports:
+      - "8501:8501"
 
 volumes:
   loki-data:
