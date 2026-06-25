@@ -1,3 +1,13 @@
+---
+title: Credit Scores API
+emoji: 🏦
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # OC P8 — Déployez et monitorez votre modèle de scoring
 
 Déploiement et monitoring d'un modèle de scoring crédit (LightGBM) en production.

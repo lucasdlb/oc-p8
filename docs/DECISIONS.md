@@ -185,3 +185,20 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
 - **Choix** : Port séparé 9100 (`start_http_server`)
 - **Justif** : Isolation du trafic metrics du trafic API. Config Prometheus standard (scrape sur port dédié). Pas de pollution des logs API par les scrapes. Le port 9100 est déjà configuré dans Docker et Prometheus.
 - **Conséquences** : La route `/metrics` sur le port 8000 est supprimée. Docker expose 2 ports (8000 + 9100).
+
+## D-24 — Déploiement API-only sur Hugging Face Spaces
+
+- **Options** : Stack complète sur VPS / API seule sur HF Spaces + monitoring local / Demo 100% locale
+- **Choix** : API seule sur HF Spaces (`Lucas-dlb/credit-scores-api`) + monitoring local via `docker-compose`
+- **Justif** : HF Spaces ne supporte qu'un seul conteneur — impossible d'y exécuter la stack de 8 services
+  (Prometheus, Loki, Promtail, Grafana, Evidently UI, node-exporter, cadvisor). Le monitoring nécessite
+  le scrape du port 9100 et l'accès aux logs Docker host, tous deux inaccessibles depuis HF Spaces.
+  Déployer uniquement l'API donne une URL publique démontrable pour le portfolio, tandis que le
+  monitoring reste démontrable en local via `docker-compose` (captures d'écran).
+  Port 9100 reste interne sur HF (non exposé) ; `/predict/rows` fonctionne sans DataSource.
+- **Conséquences** : Dockerfile unifié à la racine du repo (même comportement local et HF).
+  Le modèle `inference_pipeline.pkl` est téléchargé au build depuis un GitHub Release
+  d'oc-p6 (`model-inference-v0.1.0`) avec fallback de tier (prod → dev → debug) — pas bundlé dans le repo. HF Space variables
+  (`DATA_SOURCE=""`, `DRIFT_ENABLED=false`) configurées dans l'UI HF. CI (lint + type + tests +
+  build Docker) déclenche CD (`workflow_run` sur CI succès) qui pousse le repo vers le HF remote.
+- **Révision si** : Besoin de monitoring en production réel → migrer vers un VPS avec la stack complète.

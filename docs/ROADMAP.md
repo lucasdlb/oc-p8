@@ -93,10 +93,10 @@
 
 ## 8. CI/CD
 
-- [ ] GitHub Actions workflow
-- [ ] Pipeline CI : lint → tests → build Docker
-- [ ] Pipeline CD : déploiement auto sur Hugging Face Spaces
-- [ ] Secrets GitHub si nécessaire
+- [x] GitHub Actions workflow (`.github/workflows/ci.yml` + `cd.yml`)
+- [x] Pipeline CI : lint → format check → type check → tests (coverage ≥85%) + build Docker
+- [x] Pipeline CD : déploiement auto sur Hugging Face Space (`workflow_run` sur CI succès)
+- [x] Secrets GitHub (`HF_TOKEN`) — à configurer dans les repo settings
 
 ## 9. Optimisation post-déploiement
 
