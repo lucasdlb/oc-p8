@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
+      dockerfile: Dockerfile
     container_name: api_container
     env_file: [.env, .env.api]
     volumes:
