@@ -62,7 +62,7 @@ class ApiSettings(AppSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     metrics_port: int = 9100
-    data_source: Literal["csv", "sql"] | None = "csv"
+    data_source: Literal["csv", "sql"] | None = None
     data_path: Path = Path("data")
     drift_enabled: bool = True
     drift_reference_path: Path = Path("data/reference")
