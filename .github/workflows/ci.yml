@@ -17,7 +17,16 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run ty check
+      - name: Download model from oc-p6 release
+        run: |
+          mkdir -p artifacts
+          for tier in prod dev debug; do
+            curl -fsSL "https://github.com/lucasdlb/oc-p6/releases/download/model-inference-v0.1.0/inference_pipeline_${tier}.pkl" \
+              -o artifacts/inference_pipeline.pkl && break
+          done
       - run: uv run pytest
+        env:
+          MODEL_PATH: artifacts/inference_pipeline.pkl
 
   docker-build:
     runs-on: ubuntu-latest
