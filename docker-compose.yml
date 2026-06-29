@@ -6,8 +6,8 @@ services:
     container_name: api_container
     env_file: [.env, .env.api]
     volumes:
-      - ./${DATA_PATH:-data}:/app/${DATA_PATH:-data}:ro
-      - ./workspace:/app/workspace
+      - ./${DATA_PATH:-data}:/home/user/app/${DATA_PATH:-data}:ro
+      - ./workspace:/home/user/app/workspace
     ports:
       - "${API_PORT:-8000}:${API_PORT:-8000}"
       - "${METRICS_PORT:-9100}:${METRICS_PORT:-9100}"

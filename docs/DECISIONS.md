@@ -202,3 +202,48 @@ Chaque entrée est ajoutée après co-réflexion entre l'utilisateur et l'agent.
   (`DATA_SOURCE=""`, `DRIFT_ENABLED=false`) configurées dans l'UI HF. CI (lint + type + tests +
   build Docker) déclenche CD (`workflow_run` sur CI succès) qui pousse le repo vers le HF remote.
 - **Révision si** : Besoin de monitoring en production réel → migrer vers un VPS avec la stack complète.
+
+## D-25 — Méthodologie de benchmark
+
+- **Options** : Grafana seul / script in-process + Grafana / HTTP load test seul
+- **Choix** : Script in-process reproductible (pyinstrument + perf_counter + getrusage) + Grafana pour la vue HTTP live
+- **Justif** : Grafana donne des agrégats fenêtrés, pas un rapport statistique reproductible diffable.
+  Le script in-process élimine le jitter réseau, permet le profiling pyinstrument, et produit un JSON
+  stable pour le diff avant/après. La vue HTTP (latence end-to-end, mémoire conteneur) reste capturée
+  par Grafana (screenshots portfolio). pyinstrument (profilage statistique, faible overhead) répond à
+  "preprocessing vs LightGBM" mieux que cProfile (instrumentation déterministe bruitée sur Polars/LGBM).
+  Mémoire processus via `resource.getrusage` (stdlib, pas de psutil).
+- **Conséquences** : `monitoring/benchmark.py` (primitives partagées) + `scripts/bench_predict.py` +
+  `scripts/bench_predict_rows.py` + `docs/benchmark.md` + `docs/benchmark/*.json/html/txt`.
+  Le benchmark mesure les code paths des routes sans la surcouche HTTP/uvicorn (~1-5ms, constant).
+  Deux scripts séparés car `/predict` (I/O-bound, 7 CSVs) et `/predict/rows` (compute-bound, JSON)
+  ont des profils de performance fondamentalement différents.
+- **Révision si** : Besoin de mesurer l'overhead HTTP lui-même → ajouter un flag `--http` au script.
+
+## D-26 — Optimisation post-déploiement : ONNX Runtime
+
+- **Options** : Native LightGBM / ONNX Runtime (LightGBM exporté) / ONNX full pipeline (preprocessing + modèle)
+- **Choix** : **ONNX Runtime partiel** — seule l'inférence LightGBM est exportée vers ONNX
+- **Justif** :
+  - Le preprocessing (7 pipelines sklearn Polars-native) n'est pas convertible en ONNX (steps custom)
+  - L'inférence ONNX seule est **+47% plus rapide** que native (0.64ms vs 1.21ms, batch=50)
+  - La différence de précision est négligeable (5.3e-07, float32 vs float64)
+  - ONNX Runtime allège l'image Docker (~30-40 Mo sans lightgbm/scikit-learn)
+  - Le pipeline complet reste dominé par le preprocessing (78ms) — l'impact end-to-end est <1%
+  - Le full pipeline ONNX (conversion preprocessing complet via skl2onnx) n'est pas réalisable : les steps Polars custom n'ont pas de converter implémenté
+- **Conséquences** : `onnxruntime` ajouté aux dépendances dev. Le ONNX model est exporté one-shot via `onnxmltools` et mis en cache (`/tmp/lgbm_export.onnx`). `scripts/bench_onnx.py` sert de benchmark de comparaison et de preuve de concept pour une migration future.
+- **Révision si** : Besoin de supprimer la dépendance `lightgbm` de l'image Docker → produire le ONNX model dans le CI et le bundler dans l'artefact de déploiement.
+
+## D-27 — Optimisation post-déploiement : preprocessing (schema caching + lazy fix)
+
+- **Options** : Ne rien faire (ONNX suffit) / Vendoriser credit-risk-models/processing pour patcher / **Wrapper monkey-patch pour benchmark uniquement** / Réécrire le preprocessing en Polars pur
+- **Choix** : **Wrapper monkey-patch** — un module `scripts/optimize_pipeline.py` deep-copie le pipeline et patche `InferencePipeline.predict()` et `BureauBalanceAggregator.transform()`.
+- **Justif** :
+  - Le preprocessing est dominé par deux causes identifiées (pyinstrument §7) : des appels répétés à `merged.columns` dans `predict()` (7% du temps) et un round-trip lazy→collect→eager inutile dans `BureauBalanceAggregator` (22% collect + 5% lazy).
+  - Le cache schema (`set(merged.columns)` au lieu de `f in merged.columns`) donne **+11.5%** à lui seul.
+  - Le fix bureau_balance (garder le plan lazy jusqu'au collect final) ajoute **+3.4%**.
+  - Total : **+9% pipeline** (82.9ms → 75.4ms, 8 batch sizes, 20 runs).
+  - Les packages `credit-risk-models` et `credit-risk-processing` viennent du repo P6 (git tags). Les vendoriser pour un patch permanent alourdirait la maintenance. Le wrapper est suffisant pour benchmarker l'impact et documenter le potentiel.
+  - L'API n'est pas modifiée — le wrapper est réservé aux scripts de benchmark/exploration.
+- **Conséquences** : `scripts/optimize_pipeline.py` créé. Résultats dans `docs/benchmark.md §10` et `docs/benchmark/preprocessing_opt.json`. La priorité de l'optimisation preprocessing passe de **Haute** à **Faible** dans le tableau de conclusion — le gain est modeste et l'API reste sur l'implémentation d'origine.
+- **Révision si** : Le preprocessing est vendorisé ou réécrit → appliquer les patches directement dans le code source.

@@ -186,3 +186,10 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
         extra={"detail": exc.errors(), "endpoint": str(request.url.path)},
     )
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+
+@app.exception_handler(Exception)
+async def unhandled_error_handler(request: Request, exc: Exception):
+    """Catch-all — log unexpected exceptions and return a structured 500."""
+    logger.exception("unhandled exception", extra={"endpoint": str(request.url.path)})
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
