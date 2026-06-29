@@ -59,6 +59,9 @@ workspace/
 # Other
 tmp.txt
 
+# Benchmark results (generated)
+docs/benchmark/
+
 # Opencode
 .agents/
 

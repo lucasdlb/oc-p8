@@ -21,7 +21,11 @@ api = [
 ]
 dev = [
     "httpx>=0.28.1",
+    "onnx>=1.16.0",
+    "onnxruntime>=1.19.0",
+    "onnxmltools>=1.14.0",
     "pre-commit>=4.6.0",
+    "pyinstrument>=5.1.2",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
     "rich>=15.0.0",
@@ -79,7 +83,7 @@ ignore = []
 # ty
 # ---------------------------------------
 [tool.ty.src]
-exclude = ["tests/"]
+exclude = ["tests/", "scripts/"]
 
 # ---------------------------------------
 # coverage
@@ -87,6 +91,7 @@ exclude = ["tests/"]
 [tool.coverage.run]
 branch = true
 source = ["src"]
+omit = ["src/credit_risk_server/monitoring/benchmark.py"]
 
 [tool.coverage.report]
 fail_under = 85

@@ -100,13 +100,15 @@
 
 ## 9. Optimisation post-déploiement
 
-- [ ] Benchmark API (latence, temps d'inférence, mémoire CPU/RAM)
-- [ ] Identifier goulots d'étranglement
-- [ ] Tester optimisation :
+- [x] Benchmark API (latence, temps d'inférence, mémoire CPU/RAM) — `docs/benchmark.md`
+- [x] Identifier goulots d'étranglement — profiling pyinstrument (I/O 72% `/predict`, Polars↔pandas 34% `/predict/rows`)
+- [x] Tester optimisation :
+  - [x] **ONNX Runtime** — LightGBM exporté vers ONNX, benchmark comparatif (scripts/bench_onnx.py)
+  - [x] **Preprocessing optimisé** — cache schema (+11.5%) + bureau_balance lazy fix (+3.4%), **total +9%** (scripts/optimize_pipeline.py, `docs/benchmark.md §10`)
   - [ ] joblib compression
-  - [ ] preprocessing optimisé
   - [ ] batch inference (si pertinent)
-- [ ] Comparer avant/après
+- [x] Comparer avant/après — voir `docs/benchmark.md §9` et `docs/benchmark/onnx_full.json`
+- [x] Comparer avant/après preprocessing — voir `docs/benchmark.md §10` et `docs/benchmark/preprocessing_opt.json`
 
 ## 10. Documentation finale
 
